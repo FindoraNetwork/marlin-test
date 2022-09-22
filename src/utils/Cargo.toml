@@ -13,3 +13,4 @@ log = "0.4"
 num_enum = { version = "0.5.3", default-features = false }
 precompile-utils-macro = { path = "macro" }
 sha3 = { version = "0.10", default-features = false }
+ark-std = "0.3.0"

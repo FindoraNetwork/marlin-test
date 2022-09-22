@@ -1,3 +1,5 @@
+mod traits;
+
 use ark_ff::Field;
 use ark_relations::{
     lc,
@@ -12,8 +14,6 @@ struct Circuit<F: Field> {
     num_constraints: usize,
     num_variables: usize,
 }
-
-
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
     fn generate_constraints(
@@ -117,7 +117,7 @@ impl<F: Field> ConstraintSynthesizer<F> for OutlineTestCircuit<F> {
 
 pub mod marlin {
     use super::*;
-    use ark_marlin::{ Marlin, SimpleHashFiatShamirRng };
+    use ark_marlin::{IndexVerifierKey, Marlin, Proof, SimpleHashFiatShamirRng};
 
     use ark_bls12_381::{Bls12_381, Fr};
     use ark_ff::UniformRand;
@@ -125,13 +125,13 @@ pub mod marlin {
     use ark_poly_commit::marlin_pc::MarlinKZG10;
     use ark_std::ops::MulAssign;
     use blake2::Blake2s;
-    use rand_chacha::ChaChaRng;
-    use web3;
-    use web3::types::{H160, U256, Bytes, Address};
-    use std::str::FromStr;
     use evm_precompile_utils::EvmDataWriter;
+    use rand_chacha::ChaChaRng;
+    use std::str::FromStr;
+    use web3;
+    use web3::types::{Address, Bytes, H160, U256};
 
-    type MultiPC = MarlinKZG10<Bls12_381, DensePolynomial<Fr>>;
+    pub(crate) type MultiPC = MarlinKZG10<Bls12_381, DensePolynomial<Fr>>;
     type FS = SimpleHashFiatShamirRng<Blake2s, ChaChaRng>;
     type MarlinInst = Marlin<Fr, MultiPC, FS>;
 
@@ -146,30 +146,36 @@ pub mod marlin {
         let transport = web3::transports::Http::new("http://localhost:8545").unwrap();
         let web3 = web3::Web3::new(transport);
 
-        let data = EvmDataWriter::new()
-                .write_selector(Call::Verify)
-                .build();
+        let data = EvmDataWriter::new().write_selector(Call::Verify).build();
 
-        let response = web3.eth().call(web3::types::CallRequest{
-            from: Some(Address::from_str("0x42447d5f59d5bf78a82c34663474922bdf278162").unwrap()),
-            to: Some(H160::from_low_u64_be(0x2000)),
-            gas: Some(U256::from(1000000)),
-            gas_price: Some(U256::from(100_0000_0000_u64)),
-            value: None,
-            data: Some(Bytes(data)),
-            transaction_type: None,
-            access_list: None,
-            max_fee_per_gas: None,
-            max_priority_fee_per_gas: None
-        }, None).await;
+        let response = web3
+            .eth()
+            .call(
+                web3::types::CallRequest {
+                    from: Some(
+                        Address::from_str("0x42447d5f59d5bf78a82c34663474922bdf278162").unwrap(),
+                    ),
+                    to: Some(H160::from_low_u64_be(0x2000)),
+                    gas: Some(U256::from(1000000)),
+                    gas_price: Some(U256::from(100_0000_0000_u64)),
+                    value: None,
+                    data: Some(Bytes(data)),
+                    transaction_type: None,
+                    access_list: None,
+                    max_fee_per_gas: None,
+                    max_priority_fee_per_gas: None,
+                },
+                None,
+            )
+            .await;
 
         println!("Response: {:?}", response);
-        return
+        return;
     }
 
     pub async fn test_verification_contract() {
         verify_proof_web3().await;
-        return
+        return;
     }
 
     pub fn test_circuit(num_constraints: usize, num_variables: usize) {
@@ -270,5 +276,31 @@ pub mod marlin {
 
         assert!(MarlinInst::verify(&index_vk, &inputs, &proof, rng).unwrap());
         //println!("Called verifier");
+    }
+
+    pub fn get_proof_data() -> (IndexVerifierKey<Fr, MultiPC>, Proof<Fr, MultiPC>, [Fr; 2]) {
+        let rng = &mut ark_std::test_rng();
+        let universal_srs = MarlinInst::universal_setup(100, 25, 300, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let mut c = a;
+        c.mul_assign(&b);
+        let mut d = c;
+        d.mul_assign(&b);
+
+        let inputs: [Fr; 2] = [c, d];
+
+        let circ = Circuit {
+            a: Some(a),
+            b: Some(b),
+            num_constraints: 25,
+            num_variables: 25,
+        };
+
+        let (index_pk, index_vk) = MarlinInst::index(&universal_srs, circ.clone()).unwrap();
+        let proof = MarlinInst::prove(&index_pk, circ, rng).unwrap();
+
+        (index_vk, proof, inputs)
     }
 }

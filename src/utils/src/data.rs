@@ -17,7 +17,8 @@
 use super::{error, EvmResult};
 use core::{any::type_name, ops::Range};
 use ethereum_types::{H160, H256, U256};
-use std::{convert::TryInto, vec, vec::Vec};
+use std::{convert::TryInto, vec, vec::Vec, io::Write};
+use std::io::Read;
 
 /// The `address` type of Solidity.
 /// H160 could represent 2 types of data (bytes20 and address) that are not encoded the same way.
@@ -116,6 +117,15 @@ impl<'a> EvmDataReader<'a> {
     }
 }
 
+impl<'a> Read for EvmDataReader<'a> {
+    fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, std::io::Error> {
+        let range = buf.len();
+        let data = self.read_raw_bytes(range).unwrap();
+        buf.write(data)?;
+        Ok(range)
+    }
+}
+
 /// Help build an EVM input/output data.
 #[derive(Clone, Debug)]
 pub struct EvmDataWriter {
@@ -128,6 +138,16 @@ struct Array {
     offset_position: usize,
     data: Vec<u8>,
     inner_arrays: Vec<Array>,
+}
+
+impl Write for EvmDataWriter {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        self.data.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> Result<(), std::io::Error> {
+        Ok(())
+    }
 }
 
 impl EvmDataWriter {

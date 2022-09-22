@@ -664,6 +664,7 @@ dependencies = [
 name = "evm-precompile-utils"
 version = "0.1.0"
 dependencies = [
+ "ark-std",
  "ethereum",
  "ethereum-types",
  "evm",
@@ -1182,8 +1183,10 @@ dependencies = [
  "ark-poly",
  "ark-poly-commit",
  "ark-relations",
+ "ark-serialize",
  "ark-std",
  "blake2",
+ "evm",
  "evm-precompile-utils",
  "num_enum",
  "rand_chacha",

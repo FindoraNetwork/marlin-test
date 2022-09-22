@@ -1,9 +1,9 @@
-use std::env;
 use marlin_test::marlin;
+use std::env;
 
 #[tokio::main]
 async fn main() {
-    let args:Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     let test_case = &args[1];
 
     match test_case.as_str() {
