@@ -664,6 +664,11 @@ dependencies = [
 name = "evm-precompile-utils"
 version = "0.1.0"
 dependencies = [
+ "ark-bls12-381",
+ "ark-marlin",
+ "ark-poly",
+ "ark-poly-commit",
+ "ark-serialize",
  "ark-std",
  "ethereum",
  "ethereum-types",

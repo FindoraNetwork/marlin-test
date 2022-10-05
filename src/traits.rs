@@ -12,7 +12,7 @@ pub struct IndVerifierKey(pub IndexVerifierKey<Fr, MultiPC>);
 pub struct Proof1(pub Proof<Fr, MultiPC>);
 
 #[derive(CanonicalSerialize, CanonicalDeserialize, Clone)]
-pub struct Field(pub Fr);
+pub struct InputField(pub Fr);
 
 impl EvmData for IndVerifierKey {
     fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
@@ -46,7 +46,7 @@ impl EvmData for Proof1 {
     }
 }
 
-impl EvmData for Field {
+impl EvmData for InputField {
     fn read(reader: &mut EvmDataReader) -> EvmResult<Self> {
         let result = Fr::deserialize(reader);
         let fr = match result {
@@ -54,7 +54,7 @@ impl EvmData for Field {
             _ => return Err(ExitError::Other("De-Serialize Error".into())),
         };
 
-        Ok(Field(fr))
+        Ok(InputField(fr))
     }
 
     fn write(writer: &mut EvmDataWriter, value: Self) {
@@ -95,11 +95,10 @@ fn test_proof_serialization() {
 #[test]
 fn test_field_serialization() {
     let (_, _, field_arr) = crate::marlin::get_proof_data();
-    let input: [Field; 2] = [Field(field_arr[0]), Field(field_arr[1])];
-    let writer_output = EvmDataWriter::new().write(input.to_vec()).build();
+    let writer_output = EvmDataWriter::new().write(field_arr.to_vec()).build();
 
     let mut reader = EvmDataReader::new(&writer_output);
-    let parsed: Vec<Field> = reader
+    let parsed: Vec<InputField> = reader
         .read()
         .expect("to correctly parse Proof<Fr, MultiPC>");
 

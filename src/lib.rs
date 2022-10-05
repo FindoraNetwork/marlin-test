@@ -118,6 +118,7 @@ impl<F: Field> ConstraintSynthesizer<F> for OutlineTestCircuit<F> {
 pub mod marlin {
     use super::*;
     use ark_marlin::{IndexVerifierKey, Marlin, Proof, SimpleHashFiatShamirRng};
+    use traits::*;
 
     use ark_bls12_381::{Bls12_381, Fr};
     use ark_ff::UniformRand;
@@ -129,6 +130,7 @@ pub mod marlin {
     use rand_chacha::ChaChaRng;
     use std::str::FromStr;
     use web3;
+    //use web3::futures::StreamExt;
     use web3::types::{Address, Bytes, H160, U256};
 
     pub(crate) type MultiPC = MarlinKZG10<Bls12_381, DensePolynomial<Fr>>;
@@ -142,11 +144,20 @@ pub mod marlin {
         SupportsInterface = "supportsInterface()",
     }
 
-    pub async fn verify_proof_web3() {
+    pub async fn verify_proof_web3(
+        ivk: IndexVerifierKey<Fr, MultiPC>,
+        proof: Proof<Fr, MultiPC>,
+        inputs: &[InputField],
+    ) {
         let transport = web3::transports::Http::new("http://localhost:8545").unwrap();
         let web3 = web3::Web3::new(transport);
 
-        let data = EvmDataWriter::new().write_selector(Call::Verify).build();
+        let data = EvmDataWriter::new()
+            .write_selector(Call::Verify)
+            .write(IndVerifierKey(ivk))
+            .write(Proof1(proof))
+            .write(inputs.to_vec())
+            .build();
 
         let response = web3
             .eth()
@@ -174,7 +185,8 @@ pub mod marlin {
     }
 
     pub async fn test_verification_contract() {
-        verify_proof_web3().await;
+        let (ivk, proof, inputs) = get_proof_data();
+        verify_proof_web3(ivk, proof, &inputs).await;
         return;
     }
 
@@ -278,7 +290,7 @@ pub mod marlin {
         //println!("Called verifier");
     }
 
-    pub fn get_proof_data() -> (IndexVerifierKey<Fr, MultiPC>, Proof<Fr, MultiPC>, [Fr; 2]) {
+    pub fn get_proof_data() -> (IndexVerifierKey<Fr, MultiPC>, Proof<Fr, MultiPC>, [InputField; 2]) {
         let rng = &mut ark_std::test_rng();
         let universal_srs = MarlinInst::universal_setup(100, 25, 300, rng).unwrap();
 
@@ -289,7 +301,7 @@ pub mod marlin {
         let mut d = c;
         d.mul_assign(&b);
 
-        let inputs: [Fr; 2] = [c, d];
+        let inputs: [InputField; 2] = [InputField(c), InputField(d)];
 
         let circ = Circuit {
             a: Some(a),

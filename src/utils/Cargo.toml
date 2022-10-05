@@ -14,3 +14,9 @@ num_enum = { version = "0.5.3", default-features = false }
 precompile-utils-macro = { path = "macro" }
 sha3 = { version = "0.10", default-features = false }
 ark-std = "0.3.0"
+
+ark-bls12-381 = { version = "^0.3.0", default-features = false, features = [ "curve" ] }
+ark-marlin = { git = "https://github.com/arkworks-rs/marlin", branch = "master" }
+ark-serialize = { version = "^0.3.0", default-features = false, features = [ "derive" ] }
+ark-poly = { version = "^0.3.0", default-features = false }
+ark-poly-commit = { version = "^0.3.0", default-features = false }
